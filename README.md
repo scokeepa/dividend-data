@@ -192,26 +192,7 @@ SCHG     # Schwab 미국 대형 성장주
 
 ## data.js 형식
 
-```js
-export default {
-  "generated": "2026-09-17T15:20:26+00:00",
-  "source": "Yahoo Finance via yfinance",
-  "count": 103,
-  "failed": [],
-  "quotes": {
-    "SCHD": { "t":"SCHD", "sym":"SCHD", "px":33.84, "cur":"USD",
-              "ttm":1.048, "n":4, "xm":[3,6,9,12] }
-  }
-};
-```
-
-| 필드 | 뜻 |
-|---|---|
-| `px` | 현재가 (해당 종목의 통화 기준) |
-| `cur` | `USD` 또는 `KRW` |
-| `ttm` | 최근 1년 주당 분배금 합계 |
-| `n` | 그 1년간 지급 횟수 = 연 지급 횟수 |
-| `xm` | 배당락이 있었던 월 — **지급월과는 한 달 차이가 날 수 있습니다** |
+모든 파일 형식(data.js · universe · tax.js · yahoo_cache.json · 설정 코드)은 [SCHEMA.md](SCHEMA.md)에 정리돼 있습니다.
 
 ## 분배금 계산을 358일로 자르는 이유
 
