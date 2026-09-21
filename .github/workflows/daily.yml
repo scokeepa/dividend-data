@@ -1,0 +1,61 @@
+name: 시세 갱신
+
+on:
+  schedule:
+    # 미국장 마감(16:00 ET) 이후. 평일 21:30 UTC = 한국시간 다음날 06:30
+    - cron: "30 21 * * 1-5"
+    # 국내장 마감(15:30 KST) 이후. 평일 07:00 UTC = 한국시간 16:00
+    - cron: "0 7 * * 1-5"
+  workflow_dispatch:        # 버튼으로 직접 돌릴 때
+
+permissions:
+  contents: write           # data.js 를 커밋하려면 필요합니다
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 의존성 설치
+        run: pip install --upgrade yfinance defeatbeta-api
+
+      - name: 시세 수집
+        env:
+          # fallback: GitHub·Hugging Face 소스로 못 채운 종목에만 야후 호출 (기본)
+          # off: 야후를 전혀 부르지 않음 / on: 전 종목 야후 교차검증 (429 위험)
+          USE_YAHOO: fallback
+        run: python collect.py
+
+      - name: 변경분 커밋
+        id: commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data.js; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "바뀐 내용이 없습니다."
+          else
+            git add data.js
+            git commit -m "시세 갱신 $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: jsDelivr 캐시 비우기
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          # jsDelivr 는 브랜치 경로를 12시간 캐시합니다. 비워주지 않으면
+          # 커밋해도 페이지는 반나절 동안 옛날 값을 봅니다.
+          sleep 20
+          curl -sS "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@main/data.js" || true
+          echo

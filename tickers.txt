@@ -1,0 +1,111 @@
+# 월배당 포트폴리오 설계실 — 수집 대상 종목
+# 한 줄에 하나. # 뒤는 주석입니다.
+# 국내 종목은 6자리 코드만 적으면 됩니다 (.KS 는 자동으로 붙습니다).
+# 페이지에서 새 종목을 추가했다면 여기에도 한 줄 넣어주세요.
+
+# ── 미국 상장 80종목 ──
+QYLD    # Global X 나스닥100 커버드콜
+XYLD    # Global X S&P500 커버드콜
+RYLD    # Global X 러셀2000 커버드콜
+JEPI    # JPMorgan 프리미엄인컴
+JEPQ    # JPMorgan 나스닥 프리미엄인컴
+SPYI    # NEOS S&P500 하이인컴
+QQQI    # NEOS 나스닥100 하이인컴
+GPIX    # 골드만삭스 S&P500 프리미엄인컴
+FEPI    # REX FANG 프리미엄인컴
+SVOL    # Simplify 변동성 프리미엄
+DIVO    # Amplify CWP 인핸스드 배당인컴
+SCHD    # Schwab 미국 배당주
+DGRO    # iShares 코어 배당성장
+VYM     # 뱅가드 고배당
+VIG     # 뱅가드 배당성장
+NOBL    # ProShares 배당귀족
+SPHD    # 인베스코 S&P500 고배당 저변동
+HDV     # iShares 코어 고배당
+O       # 리얼티인컴 (월배당 REIT)
+PFF     # iShares 우선주·인컴
+GPIQ    # 골드만삭스 나스닥100 프리미엄인컴
+ISPY    # ProShares S&P500 하이인컴
+BALI    # iShares 미국 대형주 프리미엄인컴
+XDTE    # Roundhill S&P500 0DTE 커버드콜
+QDTE    # Roundhill 나스닥100 0DTE 커버드콜
+AIPI    # REX AI 프리미엄인컴
+YMAX    # YieldMax 유니버스 옵션인컴
+NVDY    # YieldMax NVDA 옵션인컴
+JAAA    # Janus Henderson AAA CLO
+DGRW    # WisdomTree 미국 퀄리티 배당성장
+SDY     # SPDR S&P 배당
+DVY     # iShares 셀렉트 배당
+RDVY    # First Trust 라이징 디비던드
+SPYD    # SPDR S&P500 고배당
+FDVV    # 피델리티 고배당
+COWZ    # Pacer 미국 캐시카우 100
+SCHY    # Schwab 인터내셔널 배당
+VNQ     # 뱅가드 미국 리츠
+ARCC    # Ares Capital (BDC)
+MAIN    # Main Street Capital (월배당 BDC)
+QYLG    # Global X 나스닥100 커버드콜&그로스
+XYLG    # Global X S&P500 커버드콜&그로스
+DJIA    # Global X 다우30 커버드콜
+RDTE    # Roundhill 러셀2000 0DTE 커버드콜
+IQQQ    # ProShares 나스닥100 하이인컴
+ITWO    # ProShares 러셀2000 하이인컴
+KNG     # FT Vest S&P500 배당귀족 타겟인컴
+IDVO    # Amplify CWP 인터내셔널 인핸스드 배당인컴
+TYLG    # Global X 기술섹터 커버드콜&그로스
+SPYT    # Defiance S&P500 타겟20 인컴
+MSTY    # YieldMax MSTR 옵션인컴
+TSLY    # YieldMax TSLA 옵션인컴
+CONY    # YieldMax COIN 옵션인컴
+YMAG    # YieldMax 매그니피센트7 옵션인컴
+ULTY    # YieldMax 울트라 옵션인컴
+QQQY    # Defiance 나스닥100 위클리 디스트리뷰션
+WDTE    # Defiance S&P500 위클리 디스트리뷰션 (구 JEPY)
+QQQT    # Defiance 나스닥100 인컴타겟
+GOOY    # YieldMax GOOGL 옵션인컴
+AMZY    # YieldMax AMZN 옵션인컴
+DLN     # WisdomTree 미국 대형주 배당
+DON     # WisdomTree 미국 중형주 배당
+DES     # WisdomTree 미국 소형주 배당
+DHS     # WisdomTree 미국 고배당
+PEY     # Invesco 고배당 배당성취주
+FVD     # First Trust 밸류라인 배당
+REGL    # ProShares S&P400 배당귀족
+LVHD    # Franklin 미국 저변동 고배당
+DIVB    # iShares 코어 배당
+SPHQ    # Invesco S&P500 퀄리티
+VYMI    # 뱅가드 인터내셔널 고배당
+IDV     # iShares 인터내셔널 셀렉트 배당
+DEM     # WisdomTree 신흥국 고배당
+SCHH    # Schwab 미국 리츠
+XLRE    # SPDR 부동산 섹터
+MORT    # VanEck 모기지리츠 인컴
+AGNC    # AGNC Investment (월배당 모기지리츠)
+STAG    # STAG Industrial (물류 리츠)
+WPC     # W. P. Carey (넷리스 리츠)
+VICI    # VICI Properties (카지노 리츠)
+
+# ── 국내 상장 23종목 ──
+458730  # TIGER 미국배당다우존스
+446720  # SOL 미국배당다우존스
+402970  # ACE 미국배당다우존스
+489250  # KODEX 미국배당다우존스
+441640  # KODEX 미국배당커버드콜액티브
+458760  # TIGER 미국배당다우존스타겟커버드콜2호
+458750  # TIGER 미국배당다우존스타겟커버드콜1호
+0008S0  # TIGER 미국배당다우존스타겟데일리커버드콜
+490490  # SOL 미국배당미국채혼합50
+486290  # TIGER 미국나스닥100타겟데일리커버드콜
+494300  # KODEX 미국나스닥100데일리커버드콜OTM
+482730  # TIGER 미국S&P500타겟데일리커버드콜
+441680  # TIGER 미국나스닥100커버드콜(합성)
+0005A0  # KODEX 미국S&P500데일리커버드콜OTM
+161510  # PLUS 고배당주
+466940  # TIGER 은행고배당플러스TOP10
+0105E0  # SOL 코리아고배당
+484880  # SOL 금융지주플러스고배당
+279530  # KODEX 고배당주
+329200  # TIGER 리츠부동산인프라
+476800  # KODEX 한국부동산리츠인프라
+476550  # TIGER 미국30년국채커버드콜액티브(H)
+481060  # KODEX 미국30년국채타겟커버드콜(합성 H)
