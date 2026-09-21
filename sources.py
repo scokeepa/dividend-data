@@ -36,6 +36,9 @@ def _f(v):
 
 GH = "https://cdn.jsdelivr.net/gh/"
 
+# 전 종목 파일(universe)을 만들 때 쓰는 부가 정보 — 종목명, 구분, 보수, 지급월 등
+META = {"us": {}, "kr": {}, "usUpdated": "", "krUpdated": "", "usDivUpdated": ""}
+
 # ── 1. ttokjaeTV — 미국 주가 (30분마다 갱신, 커버리지 최고) ────────────────────
 def ttokjae_us_prices():
     b = _get(GH + "ttokjaeTV/portfolio-sheet-data@master/data/us_prices.csv")
@@ -43,7 +46,12 @@ def ttokjae_us_prices():
     for r in csv.DictReader(io.StringIO(b)):
         t = (r.get("티커") or "").strip().upper()
         v = _f(r.get("현재가USD"))
-        if t and v: px[t] = v
+        if t and v:
+            px[t] = v
+            m = META["us"].setdefault(t, {})
+            m["name"] = (r.get("종목명") or "").strip()
+            m["kind"] = "E" if (r.get("구분") or "").strip() == "ETF" else "S"
+            META["usUpdated"] = META["usUpdated"] or (r.get("갱신시각") or "")
     return px, {}, {}
 
 # ── 2. ttokjaeTV — 미국 분배금 + 지급월 ──────────────────────────────────────
@@ -55,6 +63,11 @@ def ttokjae_us_divs():
         if not t: continue
         v = _f(r.get("연배당USD"))
         if v: ttm[t] = v
+        m = META["us"].setdefault(t, {})
+        try: m["n"] = int(float(r.get("연지급횟수") or 0))
+        except Exception: pass
+        if not m.get("name"): m["name"] = (r.get("종목명") or "").strip()
+        META["usDivUpdated"] = META["usDivUpdated"] or (r.get("갱신시각") or "")
         raw = (r.get("지급월") or "").strip()
         if raw:
             ms = [int(x) for x in raw.split("|") if x.strip().isdigit() and 1 <= int(x) <= 12]
@@ -68,7 +81,17 @@ def ttokjae_kr_prices():
     for r in csv.DictReader(io.StringIO(b)):
         c = (r.get("종목코드") or "").strip().upper().zfill(6)
         v = _f(r.get("현재가"))
-        if c and v: px[c] = v
+        if c and v:
+            px[c] = v
+            mk = (r.get("시장") or "").strip()
+            META["kr"][c] = {
+                "name": (r.get("종목명") or "").strip(),
+                "cls": (r.get("자산군") or "").strip(),
+                "er": _f(r.get("총보수")) or 0.0,
+                # 국내 주식만 담으면 배당소득 과세, 해외·혼합이면 국내 상장 해외 ETF 과세
+                "mkt": "D" if mk == "국내" else ("F" if mk == "해외" else "M"),
+            }
+            META["krUpdated"] = META["krUpdated"] or (r.get("갱신시각") or "")
     return px, {}, {}
 
 # ── 4. ttokjaeTV — 국내 ETF 분배금 (과세표준액까지) ──────────────────────────

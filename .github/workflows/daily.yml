@@ -35,6 +35,8 @@ jobs:
           # fallback: GitHub·Hugging Face 소스로 못 채운 종목에만 야후 호출 (기본)
           # off: 야후를 전혀 부르지 않음 / on: 전 종목 야후 교차검증 (429 위험)
           USE_YAHOO: fallback
+          # 실행마다 야후에 묻는 종목 수 (분배금 두 번째 소스용 순환 캐시). 0 이면 끔
+          YAHOO_ROTATE: "15"
         run: python collect.py
 
       - name: 변경분 커밋
@@ -42,12 +44,14 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- data.js; then
+          git add -A data.js universe yahoo_cache.json
+          if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "바뀐 내용이 없습니다."
           else
-            git add data.js
             git commit -m "시세 갱신 $(date -u +'%Y-%m-%d %H:%M UTC')"
+            # 실행 중에 누가 main 에 올렸으면 그 위에 얹어서 올립니다
+            git pull --rebase -X theirs origin main || git rebase --abort
             git push
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
@@ -59,8 +63,11 @@ jobs:
           # 커밋해도 페이지는 반나절 동안 옛날 값을 봅니다.
           # 커밋 직후엔 jsDelivr 가 main 브랜치를 아직 옛 커밋으로 보고 있어서
           # 한 번만 비우면 옛 파일을 다시 캐시하는 경우가 있습니다 (실측). 간격을 두고 두 번 비웁니다.
-          sleep 45
-          curl -sS "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@main/data.js" || true
-          sleep 60
-          curl -sS "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@main/data.js" || true
-          echo
+          purge() {
+            for f in data.js universe/*.js; do
+              curl -sS -o /dev/null -w "%{http_code} $f\n" "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@main/$f" || true
+              sleep 0.3
+            done
+          }
+          sleep 45; purge
+          sleep 60; purge

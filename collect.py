@@ -13,7 +13,7 @@ data.js 를 .json 이 아니라 .js 로 내보내는 이유:
 """
 import json, sys, time, datetime, pathlib, traceback
 import yfinance as yf
-import sources, merge
+import sources, merge, universe
 
 ROOT = pathlib.Path(__file__).parent
 TICKERS = ROOT / "tickers.txt"
@@ -139,6 +139,16 @@ def load_baseline():
 #   on              : 예전처럼 전 종목을 야후에서도 받아 교차검증 표로 씁니다 (429 위험)
 import os
 USE_YAHOO = os.environ.get("USE_YAHOO", "fallback").strip().lower()
+# 야후 순환 캐시 — 실행마다 이 수만큼만 야후에 물어 yahoo_cache.json 에 쌓습니다.
+# 한꺼번에 103종목을 부르면 429 로 막히지만, 15종목씩이면 막히지 않습니다.
+# 하루 두 번 실행이면 3~4일에 한 바퀴 돌고, 이 캐시가 분배금의 두 번째 소스가 됩니다.
+YAHOO_ROTATE = int(os.environ.get("YAHOO_ROTATE", "15") or 0)
+CACHE = ROOT / "yahoo_cache.json"
+CACHE_MAX_DAYS = 10     # 이보다 오래된 캐시 값은 쓰지 않습니다
+
+def load_cache():
+    try: return json.loads(CACHE.read_text(encoding="utf-8"))
+    except Exception: return {}
 
 def main():
     tickers = read_tickers()
@@ -163,22 +173,55 @@ def main():
             r = merge.merge_ticker(t, {}, None, externals)
             if not r.get("px") or not r.get("ttm"):
                 need.append(t)
-    print(f"\n2단계 — 야후 ({USE_YAHOO}): {len(need)}종목 요청")
-    for i, t in enumerate(need, 1):
+    # 순환 대상: 캐시에 없거나 가장 오래된 종목부터
+    cache = load_cache()
+    rot = []
+    if YAHOO_ROTATE > 0 and USE_YAHOO != "off":
+        order = sorted(tickers, key=lambda t: (cache.get(t, {}).get("at", ""), t))
+        rot = [t for t in order if t not in need][:YAHOO_ROTATE]
+    ask = need + rot
+    print(f"\n2단계 — 야후 ({USE_YAHOO}): 비상 {len(need)}종목 + 순환 {len(rot)}종목")
+    blocked = False
+    for i, t in enumerate(ask, 1):
         try:
             row = collect_one(t, today)
-            if row: own[t] = row
-            else: failed.append(t)
-        except Exception:
+            if row:
+                own[t] = row
+                cache[t] = {k: row[k] for k in ("px", "ttm", "n", "xm") if k in row}
+                cache[t]["at"] = today.isoformat()
+            else:
+                failed.append(t)
+        except Exception as e:
             failed.append(t)
-        time.sleep(0.35)
-    if need:
+            if "429" in str(e) or "Too Many" in str(e):
+                blocked = True
+        # 연속 실패는 차단 신호로 보고 멈춥니다 — 더 두드리면 차단이 길어집니다
+        if blocked or (len(failed) >= 3 and not own):
+            print(f"    야후가 막는 것으로 보여 {i}번째에서 멈춥니다")
+            break
+        time.sleep(1.0)
+    if ask:
         print(f"    받음 {len(own)} · 실패 {len(failed)}")
+    try:
+        CACHE.write_text(json.dumps(cache, ensure_ascii=False, sort_keys=True, separators=(",", ":")), encoding="utf-8")
+    except Exception:
+        pass
+    # 이번에 새로 받지 않은 종목의 캐시 분배금을 소스 하나로 넣습니다 (주가는 넣지 않음 — 며칠 지난 주가는 표만 흐립니다)
+    fresh_cut = (today - datetime.timedelta(days=CACHE_MAX_DAYS)).isoformat()
+    externals["yahoo-cache"] = {
+        "name": "야후 순환 캐시 (분배금)",
+        "px": {},
+        "ttm": {t: v["ttm"] for t, v in cache.items()
+                if t not in own and v.get("ttm") and v.get("at", "") >= fresh_cut},
+        "pm": {},
+    }
+    print(f"    캐시에서 분배금 {len(externals['yahoo-cache']['ttm'])}종목 사용 (최근 {CACHE_MAX_DAYS}일 이내)")
 
     # ── 3단계: 합의 ──────────────────────────────────────────────────────────
     print("\n3단계 — 교차검증 후 합의")
     quotes = {}
-    stats = {"단일소스": 0, "불일치": 0, "버려진값": 0, "카탈로그만": 0, "야후사용": len(own)}
+    stats = {"단일소스": 0, "불일치": 0, "버려진값": 0, "카탈로그만": 0, "야후사용": len(own),
+             "야후캐시": len(externals["yahoo-cache"]["ttm"])}
     for t in tickers:
         base = baseline.get(t) or {}
         row = merge.merge_ticker(t, base, own.get(t), externals)
@@ -194,6 +237,8 @@ def main():
             row["cur"] = base.get("cur") or ("KRW" if yahoo_symbol(t).endswith((".KS", ".KQ")) else "USD")
         ps = [s for s in row.get("pxSrc", []) if s != "카탈로그"]
         ts = [s for s in row.get("ttmSrc", []) if s != "카탈로그"]
+        if len(ps) <= 1: stats["주가단일"] = stats.get("주가단일", 0) + 1
+        if len(ts) <= 1: stats["분배단일"] = stats.get("분배단일", 0) + 1
         if len(ps) <= 1 or len(ts) <= 1: stats["단일소스"] += 1
         if row.get("pxSpread") or row.get("ttmSpread"): stats["불일치"] += 1
         if row.get("dropped"): stats["버려진값"] += 1
@@ -206,7 +251,7 @@ def main():
         sys.exit(f"결과가 급감했습니다({len(baseline)} → {len(quotes)}). 기존 data.js 를 지킵니다.")
 
     src_names = {k: v["name"] for k, v in externals.items()}
-    src_names["yfinance"] = "야후 파이낸스 (비상용)"
+    src_names["yfinance"] = "야후 파이낸스 (이번 실행)"
     src_names["카탈로그"] = "페이지 내장 기준값"
     payload = {
         "generated": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
@@ -221,7 +266,17 @@ def main():
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     OUT.write_text("export default " + body + ";\n", encoding="utf-8")
     print(f"\ndata.js 작성 완료 — {len(quotes)}종목, {OUT.stat().st_size:,} bytes")
-    print(f"    야후 호출 {len(need)}종목 · 소스 1개뿐 {stats['단일소스']} · 불일치 {stats['불일치']}"
+
+    # ── 4단계: 전 종목 파일 ─────────────────────────────────────────────────
+    #    페이지에서 목록에 없는 종목을 추가해도 tickers.txt 를 고칠 필요 없이 매일 갱신됩니다.
+    try:
+        idx, sizes = universe.build(externals, sources.META, ROOT / "universe")
+        big = max(sizes.values()) if sizes else 0
+        print(f"    전 종목 파일 — 미국 {idx['us']:,} · 국내 {idx['kr']:,}종목, "
+              f"{len(sizes)}개 파일 합계 {sum(sizes.values()):,} bytes (가장 큰 파일 {big:,})")
+    except Exception as e:
+        print(f"    전 종목 파일 생성 실패 — data.js 는 정상 ({type(e).__name__}: {e})")
+    print(f"    야후 호출 {len(ask)}종목 · 분배금 소스 1개뿐 {stats.get('분배단일',0)} · 주가 소스 1개뿐 {stats.get('주가단일',0)} · 불일치 {stats['불일치']}"
           f" · 이상치 제거 {stats['버려진값']} · 기준값만 {stats['카탈로그만']}")
 
 if __name__ == "__main__":
